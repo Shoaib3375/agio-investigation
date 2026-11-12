@@ -35,6 +35,7 @@ services:
       # service name (internal default network), reachable from the api.
       INVESTIGATION_DATABASE_URL: postgresql+asyncpg://investigation:local_password@investigation-database:5432/agio_investigation
       APP_ENV: local
+      RABBITMQ_URL: amqp://agio:agio_secret@rabbitmq:5672/agio
     ports:
       - "8001:8000"
     networks:

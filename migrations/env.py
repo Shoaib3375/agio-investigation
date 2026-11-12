@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from app.core.config import settings
 from app.database.base import Base
+import app.models.event_inbox  # noqa: F401 — registers EventInbox with Base.metadata
 
 config = context.config
 
