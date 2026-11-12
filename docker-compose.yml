@@ -1,0 +1,56 @@
+# Python Investigation Service — own compose stack.
+# Does NOT touch Laravel's docker-compose. Brings up its own Postgres and the
+# FastAPI service, and joins Laravel's external network for RabbitMQ/app
+# reachability when Laravel is running.
+
+services:
+  investigation-database:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: agio_investigation
+      POSTGRES_USER: investigation
+      POSTGRES_PASSWORD: local_password
+    ports:
+      - "5433:5432"
+    volumes:
+      - investigation_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U investigation -d agio_investigation"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - default
+
+  investigation-api:
+    build: .
+    depends_on:
+      investigation-database:
+        condition: service_healthy
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      # Environment takes precedence over env_file. The host is the compose
+      # service name (internal default network), reachable from the api.
+      INVESTIGATION_DATABASE_URL: postgresql+asyncpg://investigation:local_password@investigation-database:5432/agio_investigation
+      APP_ENV: local
+    ports:
+      - "8001:8000"
+    networks:
+      - default
+      - paymentexchange
+
+networks:
+  # Internal-only network so the api and its own database can talk to each
+  # other without exposing that traffic externally.
+  default:
+    internal: true
+  # Laravel's external bridge so investigation-api can reach `rabbitmq` and
+  # `app`. Must exist before `docker compose up` of investigation-api.
+  paymentexchange:
+    name: paymentexchange_payment-exchange
+    external: true
+
+volumes:
+  investigation_db_data:
