@@ -8,7 +8,7 @@ os.environ.setdefault("APP_ENV", "local")
 os.environ.setdefault("LOG_LEVEL", "DEBUG")
 os.environ.setdefault(
     "INVESTIGATION_DATABASE_URL",
-    "postgresql+asyncpg://investigation:local_password@127.0.0.1:5433/agio_investigation",
+    "postgresql+asyncpg://investigation:local_password@127.0.0.1:5437/agio_investigation",
 )
 
 import pytest_asyncio  # noqa: E402

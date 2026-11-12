@@ -11,7 +11,7 @@ services:
       POSTGRES_USER: investigation
       POSTGRES_PASSWORD: local_password
     ports:
-      - "5433:5432"
+      - "5437:5432"
     volumes:
       - investigation_db_data:/var/lib/postgresql/data
     healthcheck:
@@ -42,10 +42,10 @@ services:
       - paymentexchange
 
 networks:
-  # Internal-only network so the api and its own database can talk to each
-  # other without exposing that traffic externally.
-  default:
-    internal: true
+  # Bridge network for the api and its own database.
+  # Not marked internal so the host can reach investigation-database on 5437
+  # (needed for host-based pytest / alembic runs).
+  default: {}
   # Laravel's external bridge so investigation-api can reach `rabbitmq` and
   # `app`. Must exist before `docker compose up` of investigation-api.
   paymentexchange:
