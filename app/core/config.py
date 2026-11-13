@@ -46,10 +46,23 @@ class Settings(BaseSettings):
     laravel_api_timeout_seconds: int = 10
     laravel_api_max_retries: int = 2
 
-    # LLM (disabled until PY-M07) ---------------------------------------
-    llm_provider: str = "disabled"
+    # Admin API authentication (PY-M06)
+    # A static bearer token for the admin-facing API.
+    # In production, replace with a proper JWT / RBAC mechanism.
+    admin_api_key: str | None = None
+
+    # LLM (PY-M07) ──────────────────────────────────────────────────────
+    llm_provider: str = "disabled"       # "disabled" | "openai"
     llm_api_key: str | None = None
-    llm_model: str | None = None
+    llm_model: str = "gpt-4o-mini"
+    llm_timeout_seconds: int = 60
+    llm_max_tokens: int = 2048
+    llm_prompt_version: str = "1.0.0"
+
+    # Retention (PY-M09) ─────────────────────────────────────────────────
+    retention_event_inbox_days: int = 30     # delete processed events after N days
+    retention_investigation_days: int = 90   # delete completed investigations after N days
+    retention_interval_seconds: int = 21600  # run cleanup every 6 hours
 
 
 settings = Settings()

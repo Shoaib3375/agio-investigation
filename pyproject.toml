@@ -50,4 +50,5 @@ asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
 markers = [
     "requires_db: marks tests that require a live investigation database on 127.0.0.1:5437",
+    "requires_laravel: marks tests that require the Laravel app running on localhost:8000 with a valid service token",
 ]

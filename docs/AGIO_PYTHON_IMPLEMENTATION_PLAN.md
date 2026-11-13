@@ -30,8 +30,17 @@
 | 7 | PY-M05 | Deterministic investigation engine |
 | 8 | PY-M06 | Admin-facing investigation API |
 | 9 | PY-M07 | LLM explanation |
-| 10 | PY-M08 | RAG knowledge base |
+| 10 | PY-M08 | RAG knowledge base — **future optional milestone** (see note below) |
 | 11 | PY-M09 | Production hardening |
+
+> **PY-M08 (RAG) is intentionally deferred.** The investigation engine is fully
+> operational with deterministic rules (PY-M05) and LLM explanation (PY-M07).
+> RAG adds retrieval of approved policies and historical cases, but introduces
+> pgvector, an embedding pipeline, and knowledge-base curation overhead.
+> This milestone will only be scheduled when: (a) the core engine is running in
+> production, (b) there is a confirmed retrieval use case with measurable benefit,
+> and (c) a curated, approved knowledge base exists. Do not implement PY-M08
+> ahead of that gate.
 
 ## PY-M00 — first task (read-only)
 

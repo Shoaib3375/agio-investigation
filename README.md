@@ -37,22 +37,99 @@ Laravel PaymentExchange  →  Transactional Outbox  →  RabbitMQ (agio.events)
 
 | Milestone | Status | Description |
 |-----------|--------|-------------|
-| PY-M00 | done | Repository & contract verification (read-only audit) |
-| PY-M01 | done | Python service foundation (FastAPI + SQLAlchemy + Alembic + Docker) |
-| PY-M02 | pending | RabbitMQ event consumer + durable event inbox |
-| PY-M03 | pending | Laravel internal API client |
-| PY-M04 | pending | Investigation database + evidence collection |
-| PY-M05 | pending | Deterministic investigation engine |
-| PY-M06 | pending | Investigation API (admin-facing) |
-| PY-M07 | pending | LLM explanation layer |
-| PY-M08 | pending | RAG knowledge base |
-| PY-M09 | pending | Production hardening |
+| PY-M00 | ✅ done | Repository & contract verification (read-only audit) |
+| PY-M01 | ✅ done | Python service foundation (FastAPI + SQLAlchemy + Alembic + Docker) |
+| PY-M02 | ✅ done | RabbitMQ event consumer + durable event inbox |
+| PY-M03 | ✅ done | Laravel internal API client |
+| PY-M04 | ✅ done | Investigation database + evidence collection |
+| PY-M05 | ✅ done | Deterministic investigation engine (26 rules across 5 analyzers) |
+| PY-M06 | ✅ done | Investigation API (admin-facing, 9 endpoints) |
+| PY-M07 | ✅ done | LLM explanation layer (OpenAI, injection-safe, structured output) |
+| PY-M08 | 📋 future | RAG knowledge base — optional, not required for operational service |
+| PY-M09 | ✅ done | Production hardening (metrics, middleware, retention, Dockerfile) |
+
+> **PY-M08 (RAG) is documented as a future optional milestone.**
+> It will not be implemented until the core investigation engine is operational
+> and there is a confirmed retrieval use case justified by real investigation
+> patterns. Enabling pgvector and an embedding pipeline before that point
+> introduces infrastructure cost with no measurable benefit.
+> The LLM layer (PY-M07) already explains findings without RAG.
+
+## Production hardening (PY-M09)
+
+### Metrics
+Prometheus metrics are exposed at `GET /api/v1/metrics` (no auth required for scraping).
+
+Metric families:
+- `agio_investigation_events_total{status}` — received / processed / duplicate / failed / dlq
+- `agio_investigation_investigations_total{status}` — lifecycle counts
+- `agio_investigation_evidence_records_total{result}` — stored / missing / api_error
+- `agio_investigation_findings_total{severity}` — per-severity finding counts
+- `agio_investigation_llm_requests_total{result}` — success / disabled / failed / timeout
+- `agio_investigation_llm_duration_seconds` — histogram
+- `agio_investigation_processing_duration_seconds` — histogram
+
+Scrape config (prometheus.yml):
+```yaml
+- job_name: agio-investigation
+  static_configs:
+    - targets: ['investigation-api:8000']
+  metrics_path: /api/v1/metrics
+```
+
+### Readiness check
+`GET /api/v1/ready` checks all dependencies:
+- **database** — critical (503 if down)
+- **rabbitmq** — non-critical (degrades but still serves)
+- **laravel** — non-critical (degrades but still serves)
+
+### Request logging
+Every HTTP request is logged with `correlation_id`, `method`, `path`, `status`, `latency_ms`.
+The `X-Request-ID` header is echoed in responses (or generated if absent).
+
+### Retention
+The retention worker runs every 6 hours and deletes:
+- `event_inbox` rows with `status='processed'` older than `RETENTION_EVENT_INBOX_DAYS` (default: 30)
+- `investigations` with `status='completed'` older than `RETENTION_INVESTIGATION_DAYS` (default: 90), excluding those with `needs_more_evidence` feedback
+
+Configure via environment variables:
+```
+RETENTION_EVENT_INBOX_DAYS=30
+RETENTION_INVESTIGATION_DAYS=90
+RETENTION_INTERVAL_SECONDS=21600
+```
+
+### Dockerfile
+- Two-stage build: builder + runtime (smaller image)
+- Pinned base image: `python:3.12.9-slim`
+- Runs as non-root user (`appuser`, UID 1001)
+- Built-in `HEALTHCHECK` using the liveness endpoint
+- uvloop + httptools for performance
+
+### Admin API
+`ADMIN_API_KEY` must be set before exposing admin endpoints. Generate with:
+```bash
+python -c "import secrets; print(secrets.token_hex(32))"
+```
+Set in `.env` and ensure it is rotated periodically.
+
+### Issue service token
+The Laravel internal API token must be issued once:
+```bash
+docker exec payment-exchange-app php artisan investigation:issue-token
+```
+Store the printed token in `LARAVEL_SERVICE_TOKEN`. It is never shown again.
+
+### LLM (optional)
+Set `LLM_PROVIDER=openai` and `LLM_API_KEY=sk-...` to enable LLM explanations.
+Defaults to `disabled` — the service operates fully without an LLM.
 
 ## Documentation
 
-- `docs/AGIO_PYTHON_IMPLEMENTATION_PLAN.md` — full architecture & implementation blueprint
-- `docs/AGIO_INVESTIGATION_READINESS_AUDIT.md` — PY-M00 verification of Laravel integration points
-- `docs/AGIO_INVESTIGATION_DATA_CONTRACT.md` — the data contract (source of truth for fields/events)
+- `docs/AGIO_INVESTIGATION_ARCHITECTURE.md` — current architecture (auto-updated)
+- `docs/AGIO_PYTHON_IMPLEMENTATION_PLAN.md` — full implementation blueprint
+- `docs/AGIO_INVESTIGATION_READINESS_AUDIT.md` — PY-M00 verification findings
+- `docs/AGIO_INVESTIGATION_DATA_CONTRACT.md` — verified event + API contract
 
 ## Local development
 
